@@ -29,6 +29,18 @@ A simple Python desktop app that scans your Gmail inbox to discover websites you
 * Gmail account
 * Google App Password (required)
 
+## Suggested Workflow
+
+1. Clone this repository.
+2. Install requirements with `pip install -r requirements.txt`.
+3. Enable IMAP and create a Google App Password.
+4. Run `python account_finder.py`.
+5. Enter Gmail credentials in the app.
+6. Scan your inbox for account-related emails.
+7. Review categorized accounts in the table.
+8. Open sites to manage or delete accounts.
+9. Export results to CSV for your records.
+
 ---
 
 ## 🔐 Setup Gmail Access
