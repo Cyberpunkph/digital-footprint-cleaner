@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import webbrowser
 import csv
+from concurrent.futures import ThreadPoolExecutor
 
 # ---------------- THEME ----------------
 BG = "#0f172a"
@@ -20,24 +21,16 @@ SEARCH_TERMS = [
     "confirm", "password", "security", "login", "reset"
 ]
 
-# Expanded platform detection
-CATEGORIES = {
-    "Social": ["facebook.com", "instagram.com", "twitter.com", "tiktok.com", "reddit.com"],
-    "Shopping": ["amazon.com", "shopee.ph", "lazada.com", "ebay.com"],
-    "Finance": ["paypal.com", "gcash.com", "paymaya.com"],
-    "Entertainment": ["netflix.com", "spotify.com", "youtube.com"],
-    "Tech": ["github.com", "stackoverflow.com", "discord.com"],
-}
-
-# Known useless/noise domains
 IGNORE_DOMAINS = [
     "gmail.com", "google.com", "youtube.com",
     "amazonaws.com", "mailchimp.com"
 ]
 
-DELETE_LINKS = {
-    "facebook.com": "https://www.facebook.com/settings?tab=your_facebook_information",
-    "instagram.com": "https://www.instagram.com/accounts/remove/request/permanent/",
+CATEGORIES = {
+    "Social": ["facebook.com", "instagram.com", "twitter.com", "tiktok.com", "reddit.com"],
+    "Shopping": ["amazon.com", "shopee.ph", "lazada.com", "ebay.com"],
+    "Finance": ["paypal.com", "gcash.com", "paymaya.com"],
+    "Tech": ["github.com", "discord.com"]
 }
 
 # ---------------- HELPERS ----------------
@@ -51,24 +44,48 @@ def categorize(domain):
             return cat
     return "Other"
 
-def extract_domains_from_body(msg):
+def extract_domains(text):
+    return re.findall(r'https?://([a-zA-Z0-9.-]+)', text)
+
+def process_email(msg_bytes):
     domains = []
     try:
+        msg = email.message_from_bytes(msg_bytes)
+
+        # FROM
+        sender = msg.get("From", "")
+        match = re.search(r'@([a-zA-Z0-9.-]+)', sender)
+        if match:
+            domains.append(clean_domain(match.group(1)))
+
+        # REPLY-TO
+        reply = msg.get("Reply-To", "")
+        match = re.search(r'@([a-zA-Z0-9.-]+)', reply)
+        if match:
+            domains.append(clean_domain(match.group(1)))
+
+        # BODY
         if msg.is_multipart():
             for part in msg.walk():
                 if part.get_content_type() == "text/plain":
-                    body = part.get_payload(decode=True).decode(errors="ignore")
-                    domains += re.findall(r'https?://([a-zA-Z0-9.-]+)', body)
+                    body = part.get_payload(decode=True)
+                    if body:
+                        body = body.decode(errors="ignore")
+                        domains += extract_domains(body)
         else:
-            body = msg.get_payload(decode=True).decode(errors="ignore")
-            domains += re.findall(r'https?://([a-zA-Z0-9.-]+)', body)
+            body = msg.get_payload(decode=True)
+            if body:
+                body = body.decode(errors="ignore")
+                domains += extract_domains(body)
+
     except:
         pass
-    return domains
+
+    return [clean_domain(d.lower()) for d in domains if d]
 
 # ---------------- SCAN ----------------
 def scan_accounts():
-    status_label.config(text="🔄 Scanning...", fg=ACCENT)
+    status_label.config(text="⚡ Scanning (elite mode)...", fg=ACCENT)
     root.update()
 
     try:
@@ -85,13 +102,12 @@ def scan_accounts():
 
         ids = []
 
-        # IMAP-safe search
         for term in SEARCH_TERMS:
             status, messages = imap.search(None, f'(SUBJECT "{term}")')
             if status == "OK":
                 ids.extend(messages[0].split())
 
-        ids = list(set(ids))
+        ids = list(set(ids))[:200]  # limit
 
         if not ids:
             messagebox.showinfo("Info", "No emails found.")
@@ -99,29 +115,26 @@ def scan_accounts():
 
         counter = Counter()
 
-        for e_id in ids[:300]:  # limit for speed
-            status, msg_data = imap.fetch(e_id, "(RFC822)")
-            if status != "OK":
-                continue
+        def fetch_and_process(e_id):
+            try:
+                status, msg_data = imap.fetch(e_id, "(RFC822)")
+                if status != "OK":
+                    return []
+                for response in msg_data:
+                    if isinstance(response, tuple):
+                        return process_email(response[1])
+            except:
+                return []
+            return []
 
-            for response in msg_data:
-                if isinstance(response, tuple):
-                    msg = email.message_from_bytes(response[1])
+        # ⚡ MULTITHREADING
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results = executor.map(fetch_and_process, ids)
 
-                    # FROM email
-                    sender = msg.get("From", "")
-                    match = re.search(r'@([a-zA-Z0-9.-]+)', sender)
-                    if match:
-                        domain = clean_domain(match.group(1).lower())
-                        if domain not in IGNORE_DOMAINS:
-                            counter[domain] += 1
-
-                    # BODY links (🔥 NEW FEATURE)
-                    domains = extract_domains_from_body(msg)
-                    for d in domains:
-                        d = clean_domain(d.lower())
-                        if d not in IGNORE_DOMAINS:
-                            counter[d] += 1
+        for domains in results:
+            for d in domains:
+                if d not in IGNORE_DOMAINS:
+                    counter[d] += 1
 
         imap.logout()
 
@@ -133,10 +146,13 @@ def scan_accounts():
         for domain, count in counter.most_common():
             tree.insert("", "end", values=(domain, count, categorize(domain)))
 
-        # Stats
-        total_label.config(text=f"Total Found: {len(counter)} domains")
+        # Top 5 display
+        top = counter.most_common(5)
+        top_text = " | ".join([f"{d}({c})" for d, c in top])
+        stats_label.config(text=f"Top: {top_text}")
 
-        status_label.config(text="✅ Scan complete", fg="#22c55e")
+        total_label.config(text=f"Total: {len(counter)} domains")
+        status_label.config(text="✅ Done", fg="#22c55e")
 
     except imaplib.IMAP4.error as e:
         messagebox.showerror("IMAP Error", str(e))
@@ -159,7 +175,7 @@ def export_csv():
         for row in tree.get_children():
             writer.writerow(tree.item(row)["values"])
 
-    messagebox.showinfo("Saved", "CSV exported!")
+    messagebox.showinfo("Saved", "Exported!")
 
 # ---------------- OPEN ----------------
 def open_site():
@@ -168,13 +184,12 @@ def open_site():
         return
 
     domain = tree.item(selected)["values"][0]
-    url = DELETE_LINKS.get(domain, f"https://{domain}")
-    webbrowser.open(url)
+    webbrowser.open(f"https://{domain}")
 
 # ---------------- UI ----------------
 root = tk.Tk()
-root.title("Account Finder PRO")
-root.geometry("900x560")
+root.title("Account Finder ELITE")
+root.geometry("950x600")
 root.configure(bg=BG)
 
 style = ttk.Style()
@@ -191,26 +206,23 @@ style.map("Treeview",
     background=[("selected", ACCENT)]
 )
 
-# Header
-tk.Label(root, text="🔎 Account Finder PRO", font=("Segoe UI", 18, "bold"),
+tk.Label(root, text="🕵️ Account Finder ELITE", font=("Segoe UI", 18, "bold"),
          bg=BG, fg=TEXT).pack(pady=10)
 
-# Input
 frame = tk.Frame(root, bg=CARD)
 frame.pack(padx=20, pady=10, fill="x")
 
-tk.Label(frame, text="Gmail", bg=CARD, fg=MUTED).grid(row=0, column=0, padx=10)
+tk.Label(frame, text="Gmail", bg=CARD, fg=MUTED).grid(row=0, column=0)
 email_entry = tk.Entry(frame, width=40, bg=BG, fg=TEXT, insertbackground=TEXT)
 email_entry.grid(row=0, column=1)
 
-tk.Label(frame, text="App Password", bg=CARD, fg=MUTED).grid(row=1, column=0, padx=10)
+tk.Label(frame, text="App Password", bg=CARD, fg=MUTED).grid(row=1, column=0)
 password_entry = tk.Entry(frame, show="*", width=40, bg=BG, fg=TEXT, insertbackground=TEXT)
 password_entry.grid(row=1, column=1)
 
 tk.Button(frame, text="Scan", command=scan_accounts,
           bg=ACCENT, fg="black").grid(row=0, column=2, rowspan=2, padx=10)
 
-# Table
 columns = ("Domain", "Emails", "Category")
 tree = ttk.Treeview(root, columns=columns, show="headings")
 
@@ -219,18 +231,20 @@ for col in columns:
 
 tree.pack(fill="both", expand=True, padx=20, pady=10)
 
-# Bottom
 bottom = tk.Frame(root, bg=BG)
 bottom.pack(fill="x", padx=20)
 
-tk.Button(bottom, text="Open Site", command=open_site,
-          bg="#334155", fg=TEXT).pack(side="left", padx=5)
+tk.Button(bottom, text="Open", command=open_site,
+          bg="#334155", fg=TEXT).pack(side="left")
 
 tk.Button(bottom, text="Export CSV", command=export_csv,
           bg="#334155", fg=TEXT).pack(side="left", padx=5)
 
-total_label = tk.Label(bottom, text="Total Found: 0", bg=BG, fg=MUTED)
+total_label = tk.Label(bottom, text="Total: 0", bg=BG, fg=MUTED)
 total_label.pack(side="left", padx=20)
+
+stats_label = tk.Label(bottom, text="Top: -", bg=BG, fg=MUTED)
+stats_label.pack(side="left", padx=20)
 
 status_label = tk.Label(bottom, text="Idle", bg=BG, fg=MUTED)
 status_label.pack(side="right")
