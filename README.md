@@ -41,13 +41,6 @@ Built with Python and Tkinter, this tool helps you **identify accounts, platform
 * 🔗 **Quick Access**
 
   * Open detected platforms directly in browser
-
----
-
-## 🖼️ SCREENSHOT
-[! images/screenshot.png ]
-
-```
 ---
 
 ## ⚙️ Requirements
