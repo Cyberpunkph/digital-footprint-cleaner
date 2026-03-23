@@ -45,10 +45,6 @@ Built with Python and Tkinter, this tool helps you **identify accounts, platform
 ---
 
 ## 🖼️ SCREENSHOT
-
----
-
-📸 Example:
 images/screenshot.png
 
 ```
