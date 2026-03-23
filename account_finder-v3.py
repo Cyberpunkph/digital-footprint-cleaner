@@ -7,7 +7,7 @@ from tkinter import ttk, messagebox, filedialog
 import webbrowser
 import csv
 
-# ---------------- THEME COLORS ----------------
+# ---------------- THEME ----------------
 BG = "#0f172a"
 CARD = "#1e293b"
 ACCENT = "#38bdf8"
@@ -20,12 +20,20 @@ SEARCH_TERMS = [
     "confirm", "password", "security", "login", "reset"
 ]
 
+# Expanded platform detection
 CATEGORIES = {
-    "Social": ["facebook.com", "instagram.com", "twitter.com", "tiktok.com"],
-    "Shopping": ["amazon.com", "shopee.ph", "lazada.com"],
-    "Finance": ["paypal.com", "gcash.com"],
-    "Entertainment": ["netflix.com", "spotify.com"],
+    "Social": ["facebook.com", "instagram.com", "twitter.com", "tiktok.com", "reddit.com"],
+    "Shopping": ["amazon.com", "shopee.ph", "lazada.com", "ebay.com"],
+    "Finance": ["paypal.com", "gcash.com", "paymaya.com"],
+    "Entertainment": ["netflix.com", "spotify.com", "youtube.com"],
+    "Tech": ["github.com", "stackoverflow.com", "discord.com"],
 }
+
+# Known useless/noise domains
+IGNORE_DOMAINS = [
+    "gmail.com", "google.com", "youtube.com",
+    "amazonaws.com", "mailchimp.com"
+]
 
 DELETE_LINKS = {
     "facebook.com": "https://www.facebook.com/settings?tab=your_facebook_information",
@@ -43,6 +51,21 @@ def categorize(domain):
             return cat
     return "Other"
 
+def extract_domains_from_body(msg):
+    domains = []
+    try:
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == "text/plain":
+                    body = part.get_payload(decode=True).decode(errors="ignore")
+                    domains += re.findall(r'https?://([a-zA-Z0-9.-]+)', body)
+        else:
+            body = msg.get_payload(decode=True).decode(errors="ignore")
+            domains += re.findall(r'https?://([a-zA-Z0-9.-]+)', body)
+    except:
+        pass
+    return domains
+
 # ---------------- SCAN ----------------
 def scan_accounts():
     status_label.config(text="🔄 Scanning...", fg=ACCENT)
@@ -53,7 +76,7 @@ def scan_accounts():
         password = password_entry.get().strip()
 
         if not email_user or not password:
-            messagebox.showwarning("Input Error", "Please enter Gmail and App Password")
+            messagebox.showwarning("Input Error", "Enter Gmail & App Password")
             return
 
         imap = imaplib.IMAP4_SSL("imap.gmail.com")
@@ -62,23 +85,21 @@ def scan_accounts():
 
         ids = []
 
-        # ✅ FIX: Loop each search term (IMAP doesn't support multi OR)
+        # IMAP-safe search
         for term in SEARCH_TERMS:
             status, messages = imap.search(None, f'(SUBJECT "{term}")')
             if status == "OK":
                 ids.extend(messages[0].split())
 
-        # ✅ Remove duplicates
         ids = list(set(ids))
 
         if not ids:
-            messagebox.showinfo("Info", "No matching emails found.")
-            status_label.config(text="No results", fg=MUTED)
+            messagebox.showinfo("Info", "No emails found.")
             return
 
         counter = Counter()
 
-        for e_id in ids:
+        for e_id in ids[:300]:  # limit for speed
             status, msg_data = imap.fetch(e_id, "(RFC822)")
             if status != "OK":
                 continue
@@ -86,12 +107,21 @@ def scan_accounts():
             for response in msg_data:
                 if isinstance(response, tuple):
                     msg = email.message_from_bytes(response[1])
-                    sender = msg.get("From", "")
 
+                    # FROM email
+                    sender = msg.get("From", "")
                     match = re.search(r'@([a-zA-Z0-9.-]+)', sender)
                     if match:
                         domain = clean_domain(match.group(1).lower())
-                        counter[domain] += 1
+                        if domain not in IGNORE_DOMAINS:
+                            counter[domain] += 1
+
+                    # BODY links (🔥 NEW FEATURE)
+                    domains = extract_domains_from_body(msg)
+                    for d in domains:
+                        d = clean_domain(d.lower())
+                        if d not in IGNORE_DOMAINS:
+                            counter[d] += 1
 
         imap.logout()
 
@@ -102,6 +132,9 @@ def scan_accounts():
         # Insert results
         for domain, count in counter.most_common():
             tree.insert("", "end", values=(domain, count, categorize(domain)))
+
+        # Stats
+        total_label.config(text=f"Total Found: {len(counter)} domains")
 
         status_label.config(text="✅ Scan complete", fg="#22c55e")
 
@@ -119,24 +152,19 @@ def export_csv():
     if not path:
         return
 
-    try:
-        with open(path, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["Domain", "Count", "Category"])
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Domain", "Count", "Category"])
 
-            for row in tree.get_children():
-                writer.writerow(tree.item(row)["values"])
+        for row in tree.get_children():
+            writer.writerow(tree.item(row)["values"])
 
-        messagebox.showinfo("Saved", "CSV exported successfully!")
-
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
+    messagebox.showinfo("Saved", "CSV exported!")
 
 # ---------------- OPEN ----------------
 def open_site():
     selected = tree.focus()
     if not selected:
-        messagebox.showwarning("Warning", "Select a domain first")
         return
 
     domain = tree.item(selected)["values"][0]
@@ -145,8 +173,8 @@ def open_site():
 
 # ---------------- UI ----------------
 root = tk.Tk()
-root.title("Account Finder")
-root.geometry("800x520")
+root.title("Account Finder PRO")
+root.geometry("900x560")
 root.configure(bg=BG)
 
 style = ttk.Style()
@@ -164,23 +192,23 @@ style.map("Treeview",
 )
 
 # Header
-tk.Label(root, text="Account Finder", font=("Segoe UI", 18, "bold"),
+tk.Label(root, text="🔎 Account Finder PRO", font=("Segoe UI", 18, "bold"),
          bg=BG, fg=TEXT).pack(pady=10)
 
-# Input Card
+# Input
 frame = tk.Frame(root, bg=CARD)
 frame.pack(padx=20, pady=10, fill="x")
 
-tk.Label(frame, text="Gmail", bg=CARD, fg=MUTED).grid(row=0, column=0, padx=10, pady=5)
+tk.Label(frame, text="Gmail", bg=CARD, fg=MUTED).grid(row=0, column=0, padx=10)
 email_entry = tk.Entry(frame, width=40, bg=BG, fg=TEXT, insertbackground=TEXT)
-email_entry.grid(row=0, column=1, padx=10)
+email_entry.grid(row=0, column=1)
 
-tk.Label(frame, text="App Password", bg=CARD, fg=MUTED).grid(row=1, column=0, padx=10, pady=5)
+tk.Label(frame, text="App Password", bg=CARD, fg=MUTED).grid(row=1, column=0, padx=10)
 password_entry = tk.Entry(frame, show="*", width=40, bg=BG, fg=TEXT, insertbackground=TEXT)
-password_entry.grid(row=1, column=1, padx=10)
+password_entry.grid(row=1, column=1)
 
 tk.Button(frame, text="Scan", command=scan_accounts,
-          bg=ACCENT, fg="black", relief="flat").grid(row=0, column=2, rowspan=2, padx=10)
+          bg=ACCENT, fg="black").grid(row=0, column=2, rowspan=2, padx=10)
 
 # Table
 columns = ("Domain", "Emails", "Category")
@@ -191,15 +219,18 @@ for col in columns:
 
 tree.pack(fill="both", expand=True, padx=20, pady=10)
 
-# Bottom bar
+# Bottom
 bottom = tk.Frame(root, bg=BG)
-bottom.pack(fill="x", padx=20, pady=5)
+bottom.pack(fill="x", padx=20)
 
 tk.Button(bottom, text="Open Site", command=open_site,
           bg="#334155", fg=TEXT).pack(side="left", padx=5)
 
 tk.Button(bottom, text="Export CSV", command=export_csv,
           bg="#334155", fg=TEXT).pack(side="left", padx=5)
+
+total_label = tk.Label(bottom, text="Total Found: 0", bg=BG, fg=MUTED)
+total_label.pack(side="left", padx=20)
 
 status_label = tk.Label(bottom, text="Idle", bg=BG, fg=MUTED)
 status_label.pack(side="right")
