@@ -2,6 +2,5 @@ tk
 numpy
 pandas
 matplotlib
-imaplib
 tkinter
 email
