@@ -1,105 +1,205 @@
-# digital-footprint-cleaner
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue) ![License](https://img.shields.io/badge/License-MIT-green) ![Tkinter](https://img.shields.io/badge/Tkinter-UI-orange)
+# 🕵️ Account Finder ELITE
 
-# 🔍 Account Finder Tool
+A powerful **OSINT-style email analysis tool** that scans your Gmail inbox to discover linked platforms, services, and digital footprints based on email activity.
 
-A simple Python script that scans your Gmail inbox to discover websites you’ve signed up for—so you can clean up your online presence.
-
----
-
-## ✨ Features
-
-* 📥 Scan Gmail for account-related emails
-* 🌐 Extract websites linked to your email
-* 🧠 Automatically categorize:
-
-  * Social Media
-  * Shopping
-  * Finance
-  * Entertainment
-* 📊 Clean UI (dark mode)
-* 🔗 Open account or deletion pages
-* 💾 Export results to CSV
+Built with Python and Tkinter, this tool helps you **identify accounts, platforms, and services associated with your email** by analyzing senders and embedded links.
 
 ---
 
-### Screenshot of the App
-![Account Finder Screenshot](images/screenshot.png)
+## 🚀 Features
 
+* 🔍 **Deep Email Analysis**
+
+  * Extracts domains from:
+
+    * Sender (`From`)
+    * Reply-To headers
+    * Email body links
+
+* ⚡ **Multithreaded Scanning**
+
+  * Faster processing using concurrent workers
+
+* 🧠 **Smart Filtering**
+
+  * Removes noise (e.g., Gmail, AWS, tracking services)
+
+* 📊 **Insights Dashboard**
+
+  * Top domains (leaderboard)
+  * Total discovered services
+  * Categorized results
+
+* 🌐 **Auto Categorization**
+
+  * Social, Finance, Shopping, Tech, etc.
+
+* 📁 **Export Results**
+
+  * Save findings as CSV
+
+* 🔗 **Quick Access**
+
+  * Open detected platforms directly in browser
+
+---
+
+## 🖼️ SCREENSHOT
+
+---
+
+📸 Example:
+assets/screenshot.png
+
+```
 ---
 
 ## ⚙️ Requirements
 
-* Python 3.8+
-* Gmail account
-* Google App Password (required)
+### 🧩 System
 
-## Suggested Workflow
+* Python **3.8+**
+* Linux / Windows / macOS
+* Recommended: Kali Linux (for OSINT workflows)
 
-1. Clone this repository.
-2. Install requirements with `pip install -r requirements.txt`.
-3. Enable IMAP and create a Google App Password.
-4. Run `python account_finder.py`.
-5. Enter Gmail credentials in the app.
-6. Scan your inbox for account-related emails.
-7. Review categorized accounts in the table.
-8. Open sites to manage or delete accounts.
-9. Export results to CSV for your records.
+### 📦 Python Libraries
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Or manually:
+
+```bash
+pip install imaplib email tkinter
+```
+
+> Note: `imaplib` and `email` are built-in in most Python versions.
 
 ---
 
-## 🔐 Setup Gmail Access
+## 🔐 Gmail Setup (IMPORTANT)
+
+This tool uses **IMAP**, so Gmail must be configured:
+
+### ✅ Steps:
 
 1. Enable **2-Step Verification**
 2. Generate an **App Password**
-3. Enable **IMAP access** in Gmail settings
+3. Use that password in the tool (NOT your real password)
+
+👉 Google Account → Security → App Passwords
 
 ---
 
-## 🚀 How to Run
+## 🧠 How It Works (Workflow)
 
-```bash
-git clone https://github.com/yourusername/account-finder.git
-cd account-finder
-pip install -r requirements.txt
-python account_finder.py
+```
+User Input (Email + App Password)
+        ↓
+IMAP Connection (Gmail)
+        ↓
+Search Emails (keywords like "login", "verify")
+        ↓
+Fetch Emails
+        ↓
+Extract Data:
+    - Sender domains
+    - Reply-To domains
+    - Links inside emails
+        ↓
+Clean & Filter Data
+        ↓
+Categorize Platforms
+        ↓
+Display Results in UI
+        ↓
+(Optional) Export CSV / Open Sites
 ```
 
 ---
 
-## ⚠️ Security Notice
+## 📖 Usage Guide
 
-* This app **does NOT store your credentials**
-* Use a **Google App Password**, NOT your real password
-* Your data stays local (no external servers)
+### ▶️ Run the Tool
 
----
+```bash
+python account_finder_elite.py
+```
 
-## 📌 Limitations
+### 🧭 Steps
 
-* Only detects accounts that sent emails
-* Cannot find accounts without email history
-* Some domains may not be categorized correctly
+1. Enter your **Gmail address**
+2. Enter your **App Password**
+3. Click **Scan**
+4. Wait for analysis to complete
+5. Explore results:
 
----
+   * Domains found
+   * Categories
+   * Frequency
+6. Optional:
 
-## 🛠️ Future Improvements
-
-* Smarter detection (email body scanning)
-* More categories
-* Progress bar UI
-* Export to more formats
-* Multi-email support
-
----
-
-## 🤝 Contributing
-
-Pull requests are welcome! Feel free to improve detection, UI, or performance.
+   * Click **Open** → Visit site
+   * Click **Export CSV** → Save data
 
 ---
 
-## 📄 License
+## 📊 Output Example
 
-MIT License
+| Domain       | Emails | Category |
+| ------------ | ------ | -------- |
+| facebook.com | 12     | Social   |
+| paypal.com   | 5      | Finance  |
+| shopee.ph    | 9      | Shopping |
 
+---
+
+## ⚠️ Disclaimer
+
+This tool is intended for:
+
+* ✅ Personal email analysis
+* ✅ Security awareness
+* ✅ OSINT learning
+
+❌ **Do NOT use on accounts you do not own**
+Unauthorized access may violate laws and terms of service.
+
+---
+
+## 🧪 Future Improvements
+
+* 🕵️ Username OSINT scanning (cross-platform)
+* 📡 Breach database integration
+* 📊 Graph visualization dashboard
+* ⚡ Async scanning engine
+* 💻 CLI version
+
+---
+
+## 👨‍💻 Author
+
+Developed as part of a cybersecurity / OSINT learning project.
+
+---
+
+## ⭐ Support
+
+If you like this project:
+
+* Star ⭐ the repo
+* Share with others
+* Improve and contribute
+
+---
+
+## 🧠 Pro Tip
+
+The more emails you have (especially older ones), the more **accurate and powerful** the results will be.
+
+---
+
+🔥 **Account Finder ELITE — Turn your inbox into intelligence**
