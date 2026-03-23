@@ -49,7 +49,7 @@ Built with Python and Tkinter, this tool helps you **identify accounts, platform
 ---
 
 📸 Example:
-assets/screenshot.png
+images/screenshot.png
 
 ```
 ---
