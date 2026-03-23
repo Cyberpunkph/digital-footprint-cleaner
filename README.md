@@ -1,5 +1,5 @@
 # digital-footprint-cleaner
-Scan your Gmail to discover accounts you've signed up for and clean your digital footprint.
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue) ![License](https://img.shields.io/badge/License-MIT-green) ![Tkinter](https://img.shields.io/badge/Tkinter-UI-orange)
 
 # 🔍 Account Finder Tool
 
