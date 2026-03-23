@@ -8,10 +8,10 @@ import webbrowser
 import csv
 
 # ---------------- THEME COLORS ----------------
-BG = "#0f172a"          # dark background
-CARD = "#1e293b"        # panels
-ACCENT = "#38bdf8"      # blue highlight
-TEXT = "#e2e8f0"        # light text
+BG = "#0f172a"
+CARD = "#1e293b"
+ACCENT = "#38bdf8"
+TEXT = "#e2e8f0"
 MUTED = "#94a3b8"
 
 # ---------------- CONFIG ----------------
@@ -49,37 +49,65 @@ def scan_accounts():
     root.update()
 
     try:
+        email_user = email_entry.get().strip()
+        password = password_entry.get().strip()
+
+        if not email_user or not password:
+            messagebox.showwarning("Input Error", "Please enter Gmail and App Password")
+            return
+
         imap = imaplib.IMAP4_SSL("imap.gmail.com")
-        imap.login(email_entry.get(), password_entry.get())
+        imap.login(email_user, password)
         imap.select("inbox")
 
-        query = ' OR '.join([f'SUBJECT "{term}"' for term in SEARCH_TERMS])
-        _, messages = imap.search(None, query)
+        ids = []
 
-        ids = messages[0].split()
+        # ✅ FIX: Loop each search term (IMAP doesn't support multi OR)
+        for term in SEARCH_TERMS:
+            status, messages = imap.search(None, f'(SUBJECT "{term}")')
+            if status == "OK":
+                ids.extend(messages[0].split())
+
+        # ✅ Remove duplicates
+        ids = list(set(ids))
+
+        if not ids:
+            messagebox.showinfo("Info", "No matching emails found.")
+            status_label.config(text="No results", fg=MUTED)
+            return
+
         counter = Counter()
 
         for e_id in ids:
-            _, msg_data = imap.fetch(e_id, "(RFC822)")
+            status, msg_data = imap.fetch(e_id, "(RFC822)")
+            if status != "OK":
+                continue
+
             for response in msg_data:
                 if isinstance(response, tuple):
                     msg = email.message_from_bytes(response[1])
                     sender = msg.get("From", "")
-                    match = re.search(r'@([a-zA-Z0-9.-]+)', sender)
 
+                    match = re.search(r'@([a-zA-Z0-9.-]+)', sender)
                     if match:
                         domain = clean_domain(match.group(1).lower())
                         counter[domain] += 1
 
         imap.logout()
 
+        # Clear table
         for row in tree.get_children():
             tree.delete(row)
 
+        # Insert results
         for domain, count in counter.most_common():
             tree.insert("", "end", values=(domain, count, categorize(domain)))
 
         status_label.config(text="✅ Scan complete", fg="#22c55e")
+
+    except imaplib.IMAP4.error as e:
+        messagebox.showerror("IMAP Error", str(e))
+        status_label.config(text="❌ Login failed", fg="red")
 
     except Exception as e:
         messagebox.showerror("Error", str(e))
@@ -91,18 +119,24 @@ def export_csv():
     if not path:
         return
 
-    with open(path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Domain", "Count", "Category"])
-        for row in tree.get_children():
-            writer.writerow(tree.item(row)["values"])
+    try:
+        with open(path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Domain", "Count", "Category"])
 
-    messagebox.showinfo("Saved", "CSV exported!")
+            for row in tree.get_children():
+                writer.writerow(tree.item(row)["values"])
+
+        messagebox.showinfo("Saved", "CSV exported successfully!")
+
+    except Exception as e:
+        messagebox.showerror("Error", str(e))
 
 # ---------------- OPEN ----------------
 def open_site():
     selected = tree.focus()
     if not selected:
+        messagebox.showwarning("Warning", "Select a domain first")
         return
 
     domain = tree.item(selected)["values"][0]
@@ -115,7 +149,6 @@ root.title("Account Finder")
 root.geometry("800x520")
 root.configure(bg=BG)
 
-# Style
 style = ttk.Style()
 style.theme_use("default")
 
