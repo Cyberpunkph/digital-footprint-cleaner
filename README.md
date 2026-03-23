@@ -83,7 +83,7 @@ This tool uses **IMAP**, so Gmail must be configured:
 
 ---
 
-## 🧠 How It Works (Workflow)
+## 🧠 How It Works
 
 ```
 User Input (Email + App Password)
