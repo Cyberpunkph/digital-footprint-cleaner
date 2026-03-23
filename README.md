@@ -62,7 +62,7 @@ pip install -r requirements.txt
 Or manually:
 
 ```bash
-pip install tk numpy pandas matplotlib tkinter email
+pip install tk numpy pandas matplotlib tkinter email imaplib
 ```
 
 > Note: `imaplib` and `email` are built-in in most Python versions.
