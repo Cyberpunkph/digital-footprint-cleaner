@@ -3,7 +3,7 @@
 
 # 🔍 Account Finder Tool
 
-A simple Python desktop app that scans your Gmail inbox to discover websites you’ve signed up for—so you can clean up your online presence.
+A simple Python script that scans your Gmail inbox to discover websites you’ve signed up for—so you can clean up your online presence.
 
 ---
 
