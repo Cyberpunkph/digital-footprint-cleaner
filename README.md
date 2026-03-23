@@ -23,6 +23,11 @@ A simple Python desktop app that scans your Gmail inbox to discover websites you
 
 ---
 
+### Screenshot of the App
+![Account Finder Screenshot](images/screenshot.png)
+
+---
+
 ## ⚙️ Requirements
 
 * Python 3.8+
