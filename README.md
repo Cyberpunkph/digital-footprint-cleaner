@@ -1,7 +1,15 @@
 # 🕵️ Account Finder ELITE
 
-A powerful **OSINT-style email analysis tool** that scans your Gmail inbox to discover linked platforms, services, and digital footprints based on email activity.
+<img src="https://img.shields.io/github/stars/Cyberpunkph/digital-footprint-cleaner
+?style=for-the-badge&color=yellow">
+<img src="https://img.shields.io/github/forks/Cyberpunkph/digital-footprint-cleaner
+?style=for-the-badge&color=blue">
+<img src="https://img.shields.io/github/license/Cyberpunkph/digital-footprint-cleaner
+?style=for-the-badge&color=green">
+<img src="https://img.shields.io/github/issues/Cyberpunkph/digital-footprint-cleaner
+?style=for-the-badge&color=red">
 
+A powerful **OSINT-style email analysis tool** that scans your Gmail inbox to discover linked platforms, services, and digital footprints based on email activity.
 Built with Python and Tkinter, this tool helps you **identify accounts, platforms, and services associated with your email** by analyzing senders and embedded links.
 
 ---
